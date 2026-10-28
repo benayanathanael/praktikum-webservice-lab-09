@@ -1,0 +1,223 @@
+{
+  "info": {
+    "_postman_id": "eb16a6d4-dcc5-4c7d-85cc-87652e510808",
+    "name": "Week 08 API Gateway",
+    "description": "Siap uji lokal: baseUrl menggunakan http://localhost:8080 dan apiKey menggunakan dev key local-test-key. Jalankan gateway dengan API_KEY=local-test-key agar request Service B berhasil. Untuk pengujian rate limit, jalankan hanya request di folder Rate limit dengan Collection Runner sebanyak 30 iterasi setelah menunggu setidaknya 10 detik.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Service A",
+      "item": [
+        {
+          "name": "GET Service A root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-a/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-a",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Request is proxied to Service A with the prefix removed', function () {",
+                  "  pm.expect(pm.response.json()).to.eql({ service: 'A', path: '/' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Service B API key",
+      "item": [
+        {
+          "name": "GET Service B without API key (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-b/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-b",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Missing API key is rejected with 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Response explains that the request is unauthorized', function () {",
+                  "  pm.expect(pm.response.json()).to.eql({ error: 'Unauthorized' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Service B with incorrect API key (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "incorrect-key",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-b/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-b",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Incorrect API key is rejected with 401', function () {",
+                  "  pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test('Response explains that the request is unauthorized', function () {",
+                  "  pm.expect(pm.response.json()).to.eql({ error: 'Unauthorized' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET Service B with valid API key (expect 200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-Key",
+                "value": "{{apiKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/service-b/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-b",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Valid API key allows the request', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Request is proxied to Service B with the prefix removed', function () {",
+                  "  pm.expect(pm.response.json()).to.eql({ service: 'B', path: '/' });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Rate limit",
+      "description": "Pilih folder ini saja di Collection Runner, set Iterations ke 30, lalu jalankan setelah tidak ada request gateway selama minimal 10 detik. Iterasi 1-20 diharapkan 200 dan iterasi 21-30 diharapkan 429.",
+      "item": [
+        {
+          "name": "GET Service A 30 times (Runner: 30 iterations)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/service-a/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "service-a",
+                ""
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request has the expected status for this iteration', function () {",
+                  "  const expectedStatus = pm.info.iteration < 20 ? 200 : 429;",
+                  "  pm.expect(pm.response.code).to.eql(expectedStatus);",
+                  "});",
+                  "",
+                  "if (pm.info.iteration >= 20) {",
+                  "  pm.test('Rate-limit response explains the rejection', function () {",
+                  "    pm.expect(pm.response.json().error).to.include('Too many requests');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "local-test-key",
+      "type": "string"
+    }
+  ]
+}
